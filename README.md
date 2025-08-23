@@ -1,7 +1,4 @@
-![Banner](./your-banner-image.png)
-
-# Hi 👋, I'm Saeem Sayyed Ahmed Kadiri  
-**DevOps & Automation Engineer | AWS | Python | Monitoring Enthusiast**
+![Banner](Image.jpg)
 
 ---
 
@@ -26,7 +23,7 @@
 ## 🚀 Projects  
 - **Telemetry Script**  
   Monitors application performance and reports key metrics.  
-  [View Code](#)
+  [View Code]()
 
 - **Log Monitoring Script**  
   Analyzes logs and raises alerts for anomalies.  
