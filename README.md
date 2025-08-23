@@ -35,6 +35,15 @@
 
 ---
 
+![Saeem's GitHub stats](https://github-readme-stats.vercel.app/api?username=SAEEMSAKADIRI&show_icons=true&theme=radical)
+![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=SAEEMSAKADIRI&layout=compact&theme=radical)
+
+---
+
+![GitHub Streak](https://streak-stats.demolab.com/?user=SAEEMSAKADIRI&theme=radical)
+
+---
+
 ## 📫 Connect With Me  
 - **Email:** [saeemkadir@gmail.com](mailto:saeemkadir@gmail.com)  
 - **GitHub:** [github.com/your-username](https://github.com/your-username)  
