@@ -30,7 +30,6 @@
 
 ---
 
-## 🚀 Projects  
 
 ## 🚀 **Projects Portfolio**
 
