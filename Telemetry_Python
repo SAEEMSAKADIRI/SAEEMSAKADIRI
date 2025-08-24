@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+# ===============================================
+# Telemetry Monitoring Script (Python Version)
+# ===============================================
+# Author      : Saeem Sayyed Ahmed Kadiri
+# Description :
+#   Fetches TPS, error counts, and latency metrics
+#   from logs for telemetry monitoring.
+# ===============================================
+
+import os
+import subprocess
+import datetime
+from pathlib import Path
+
+# -------------------------
+# CONFIGURATION (EDIT THESE)
+# -------------------------
+
+# Log paths
+SYSLOG_PATH = "/var/log/messages"
+APP_LOG_DIR = "/data/app_logs/"
+
+# Remote nodes (replace with your actual hostnames/IPs)
+NODES = [
+    "node1.example.com",
+    "node2.example.com",
+    "node3.example.com",
+    "node4.example.com",
+    "node5.example.com",
+    "node6.example.com",
+    "node7.example.com",
+    "node8.example.com",
+    "node9.example.com",
+]
+
+REMOTE_SCRIPT = "tele3.sh"  # Script to run remotely
+
+# -------------------------
+# HELPER FUNCTIONS
+# -------------------------
+
+def run_command(cmd):
+    """Run a shell command and return the output (stripped)."""
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
+
+def get_time_ranges():
+    """Get start and end times for the last 5 minutes."""
+    now = datetime.datetime.now()
+    start = now - datetime.timedelta(minutes=5)
+    return start.strftime("%H:%M"), now.strftime("%H:%M"), now.strftime("%b %e"), start.strftime("%b %e %H:%M"), now.strftime("%b %e")
+
+
+def get_latest_log():
+    """Get the latest log file in the APP_LOG_DIR."""
+    logs = sorted(Path(APP_LOG_DIR).iterdir(), key=os.path.getmtime)
+    return logs[-1] if logs else None
+
+
+def count_matches(file_path, patterns):
+    """Count occurrences of given patterns in the file."""
+    if not file_path or not Path(file_path).exists():
+        return 0
+    pattern = "|".join(patterns)
+    cmd = f"grep -iE '{pattern}' '{file_path}' | wc -l"
+    return int(run_command(cmd) or 0)
+
+
+# -------------------------
+# MAIN TELEMETRY LOGIC
+# -------------------------
+
+def main():
+    print("\n=== Telemetry Monitoring ===\n")
+    start_time, end_time, current_date, tp_date, _ = get_time_ranges()
+
+    print(f"From {start_time} to {end_time}")
+    print(f"TPS Fetched for: {tp_date}\n")
+
+    # --- Local TPS Calculation ---
+    tps_cmd = f"grep -i '{current_date}' {SYSLOG_PATH} | grep -i 'backbase' | grep -i '{tp_date}' | wc -l"
+    local_tps = run_command(tps_cmd) or "0"
+
+    # --- Error Counts ---
+    latest_log = get_latest_log()
+    sys_error   = count_matches(latest_log, ["system error"])
+    db_error    = count_matches(latest_log, ["database error", "database"])
+    ora_error   = count_matches(latest_log, ["ora-"])
+    noproc_err  = count_matches(latest_log, ["noproc"])
+    conn_fail   = count_matches(latest_log, ["failed to connect"])
+    node_down   = count_matches(latest_log, ["nodedown"])
+    high_db     = count_matches(latest_log, ["db connection error", "high_db_time"])
+    case_clause = count_matches(latest_log, ["case_clause"])
+
+    # --- Display Summary ---
+    print("------------------------------------------------")
+    print("Error Summary:")
+    print(f"System Errors   : {sys_error}")
+    print(f"DB Errors       : {db_error}")
+    print(f"ORA Errors      : {ora_error}")
+    print(f"No Proc         : {noproc_err}")
+    print(f"Failed Connects : {conn_fail}")
+    print(f"Node Down       : {node_down}")
+    print(f"High DB Time    : {high_db}")
+    print(f"Case Clause     : {case_clause}")
+    print(f"TPS (Local)     : {local_tps}")
+    print("------------------------------------------------\n")
+
+    # --- Remote Node Status Check ---
+    print("Fetching telemetry from remote nodes...")
+    print("----------------------------------------")
+    for node in NODES:
+        print(f">>> Connecting to {node}")
+        try:
+            subprocess.run(
+                f"ssh -q {node} 'bash -s' < {REMOTE_SCRIPT}",
+                shell=True,
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            print(f"Failed to connect or execute script on {node}")
+        print("----------------------------------------")
+    
+    print("\nTelemetry check complete.")
+
+
+if __name__ == "__main__":
+    main()
