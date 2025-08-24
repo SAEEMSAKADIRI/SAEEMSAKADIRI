@@ -22,38 +22,45 @@
 
 ## 🚀 Projects  
 
-- **Telemetry Script**
-A lightweight tool to monitor application performance and system health.
+## 🚀 **Projects Portfolio**
 
-    | Language | File |
-    |-----------|------|
-    | 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
-    | 🐍 **Python** | [telemetry.py](Telemetry_Python) |
+### 📡 **Telemetry Script**
+> A **lightweight** tool to monitor **application performance** and **system health** in real-time.
 
-- **Log Search Script**  
-  Analyzes logs and raises alerts for anomalies.
-  
-    | Language | File |
-    |-----------|------|
-    | 🐚 **Shell** | [Log_Search.sh](LOG_SEARCH) |
-    | 🐍 **Python** | [Log_Search.py](Log_Search_Py) |
+| Language | File |
+|-----------|------|
+| 🐚 **Shell**  | [telemetry.sh](telemetry.sh) |
+| 🐍 **Python** | [telemetry.py](Telemetry_Python) |
 
-- **TPS Script**  
-  Tracks transactions per second and overall system throughput.
+---
 
-    | Language | File |
-    |-----------|------|
-    | 🐚 **Shell** | [TPS.sh](TPS) |
-    | 🐍 **Python** | [TPS.py](TPS_Py) |
-  
+### 📜 **Log Search Script**
+> Analyzes **log files** and raises **real-time alerts** for anomalies or errors.
 
-- **Health Check script**  
-  Tracks transactions per second and overall system throughput.
+| Language | File |
+|-----------|------|
+| 🐚 **Shell**  | [Log_Search.sh](LOG_SEARCH) |
+| 🐍 **Python** | [Log_Search.py](Log_Search_Py) |
 
-    | Language | File |
-    |-----------|------|
-    | 🐚 **Shell** | [HealthCheck.sh](HealthCheck) |
-    | 🐍 **Python** | [HealthCheck.py](HealthCheck_Py) | 
+---
+
+### ⚡ **TPS Script**
+> Tracks **transactions per second (TPS)** and **overall system throughput** efficiently.
+
+| Language | File |
+|-----------|------|
+| 🐚 **Shell**  | [TPS.sh](TPS) |
+| 🐍 **Python** | [TPS.py](TPS_Py) |
+
+---
+
+### 🩺 **Health Check Script**
+> Performs **server health diagnostics**, monitors **ports**, and checks **remote connectivity**.
+
+| Language | File |
+|-----------|------|
+| 🐚 **Shell**  | [HealthCheck.sh](HealthCheck) |
+| 🐍 **Python** | [HealthCheck.py](HealthCheck_Py) |
 
 ---
 
