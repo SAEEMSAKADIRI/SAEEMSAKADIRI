@@ -1,0 +1,56 @@
+#!/bin/bash
+# =============================================
+# Server Health Check Script
+# Author: Your Name
+# Version: 1.0
+# Description: Checks local and remote server health
+# =============================================
+
+# ---------- COLORS ----------
+GREEN='\033[1;32m'
+RESET='\033[0m'
+
+# ---------- DISPLAY HOSTNAME/IP ----------
+echo -e "\n\n$(echo -e "${GREEN}Host: $(hostname) | IP: $(hostname -I)${RESET}")\n"
+
+# ---------- CHECK LOCAL PROCESSES ----------
+echo "Checking local processes..."
+ps -eaf | grep sn --color=auto
+echo ""
+ps -eaf | grep odbc --color=auto
+echo ""
+
+# ---------- CHECK LOCAL PORTS ----------
+echo "Checking listening ports..."
+for port in 9003 9004 9005 443 9010 9011; do
+  result=$(netstat -ant | grep -i listen | grep $port | grep -v 44361 | awk -F ":" '{print $2}' | awk '{print $1}')
+  if [[ -n $result ]]; then
+    echo "Port $port: LISTENING"
+  else
+    echo "Port $port: NOT LISTENING"
+  fi
+done
+echo ""
+
+echo "******************************************************************************************************************************"
+
+# ---------- REMOTE SERVERS ----------
+REMOTE_SERVERS=(
+  "server1.domain.com"
+  "server2.domain.com"
+  "server3.domain.com"
+  "server4.domain.com"
+  "server5.domain.com"
+  "server6.domain.com"
+  "server7.domain.com"
+  "server8.domain.com"
+)
+
+echo "Checking remote servers..."
+for server in "${REMOTE_SERVERS[@]}"; do
+  echo "------ $server ------"
+  ssh -q "$server" 'bash -s' < check 2>/dev/null || echo "Failed to connect to $server"
+  echo ""
+done
+
+echo "Health check complete!"
