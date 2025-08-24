@@ -25,10 +25,10 @@
 - **Telemetry Script**
 A lightweight tool to monitor application performance and system health.
 
-| Language | File |
-|-----------|------|
-| 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
-| 🐍 **Python** | [telemetry.py](telemetry.py) |
+    | Language | File |
+    |-----------|------|
+    | 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
+    | 🐍 **Python** | [telemetry.py](telemetry.py) |
 
 - **Log Search Script**  
   Analyzes logs and raises alerts for anomalies.  
