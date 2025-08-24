@@ -48,8 +48,12 @@ A lightweight tool to monitor application performance and system health.
   
 
 - **Health Check script**  
-  Tracks transactions per second and overall system throughput.  
-  [View Code](HealthCheck)  
+  Tracks transactions per second and overall system throughput.
+
+    | Language | File |
+    |-----------|------|
+    | 🐚 **Shell** | [HealthCheck.sh](HealthCheck) |
+    | 🐍 **Python** | [HealthCheck.py](HealthCheck_Py) | 
 
 ---
 
