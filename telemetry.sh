@@ -2,7 +2,7 @@
 # ===============================================
 # Telemetry Monitoring Script
 # ===============================================
-# Author: Your Name
+# Author: Saeem Sayyed Ahmed Kadiri
 # Description:
 #   This script fetches TPS, error counts, and latency 
 #   metrics from logs for telemetry monitoring.
