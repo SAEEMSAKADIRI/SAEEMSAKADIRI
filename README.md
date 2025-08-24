@@ -35,8 +35,8 @@ A lightweight tool to monitor application performance and system health.
   
     | Language | File |
     |-----------|------|
-    | 🐚 **Shell** | [telemetry.sh](LOG_SEARCH) |
-    | 🐍 **Python** | [telemetry.py](Telemetry_Python) |
+    | 🐚 **Shell** | [Log_Search.sh](LOG_SEARCH) |
+    | 🐍 **Python** | [Log_Search.py](Telemetry_Python) |
 
 - **TPS Script**  
   Tracks transactions per second and overall system throughput.  
