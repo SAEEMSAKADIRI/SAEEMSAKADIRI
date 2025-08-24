@@ -64,8 +64,8 @@
 
 ---
 
-![Saeem's GitHub stats](https://github-readme-stats.vercel.app/api?username=SAEEMSAKADIRI&show_icons=true&theme=radical)
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=SAEEMSAKADIRI&layout=compact&theme=radical)
+![Saeem's GitHub stats](https://github-readme-stats.vercel.app/api?username=SAEEMSAKADIRI&show_icons=true&theme=radical&count_private=true&cache_seconds=14400)
+![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=SAEEMSAKADIRI&layout=compact&theme=radical&cache_seconds=14400)
 
 ---
 
