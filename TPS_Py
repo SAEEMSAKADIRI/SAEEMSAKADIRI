@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+# =============================================================================
+# TPS/TPH/TPD/TPM Report Generator (Python Version)
+# Author: Saeem Sayyed Ahmed Kadiri
+# Version: 1.0
+# License: MIT
+# Description:
+#   Generates transaction reports per second, minute, hour, or day by parsing
+#   application logs (local + remote).
+# =============================================================================
+
+import os
+import subprocess
+import datetime
+import time
+from collections import defaultdict
+
+# ------------------------
+# CONFIGURATION
+# ------------------------
+LOG_DIR = "/data/app_logs/tps"
+TODAY_FILE = os.path.join(LOG_DIR, "transaction_today")
+DATA_SOURCE_ALL = os.path.join(LOG_DIR, "messages_all")
+
+REMOTE_SERVERS = [
+    "server1.example.com",
+    "server2.example.com",
+    "server3.example.com",
+    "server4.example.com",
+    "server5.example.com",
+    "server6.example.com",
+    "server7.example.com",
+    "server8.example.com",
+    "server9.example.com",
+]
+
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# ------------------------
+# UTILITY FUNCTIONS
+# ------------------------
+
+def run_command(cmd):
+    """Run a shell command and return output."""
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return result.stdout.strip()
+
+def show_loader(message="Processing"):
+    print(f"⏳ {message}", end="", flush=True)
+    for _ in range(5):
+        time.sleep(0.3)
+        print(".", end="", flush=True)
+    print("\n")
+
+def collect_remote_logs():
+    """Collect logs from remote servers for 'today'."""
+    print("🔍 Collecting logs from remote servers...")
+    with open(TODAY_FILE, "w") as outfile:
+        for server in REMOTE_SERVERS:
+            cmd = f"ssh -q {server} \"cat /var/log/messages\" | grep -i backbase"
+            logs = run_command(cmd)
+            outfile.write(logs + "\n")
+    print(f"✅ Logs collected -> {TODAY_FILE}")
+
+def filter_logs(data_source, pattern):
+    """Filter logs by pattern."""
+    cmd = f"grep -i '{pattern}' '{data_source}' || true"
+    return run_command(cmd).splitlines()
+
+def count_transactions(lines):
+    """Count NET, QAP, and TID in the given log lines."""
+    net = sum(1 for l in lines if "net" in l.lower())
+    qap = sum(1 for l in lines if "qap" in l.lower())
+    tid = sum(1 for l in lines if "tid" in l.lower())
+    return net, qap, tid, net + qap + tid
+
+# ------------------------
+# REPORT FUNCTIONS
+# ------------------------
+
+def report_tps(date, data_source):
+    """Transactions per second."""
+    output_file = os.path.join(LOG_DIR, f"tps_report_{date.replace(' ', '_')}.log")
+    print(f"\n📊 Generating TPS Report for {date}...")
+    show_loader()
+
+    with open(output_file, "w") as f:
+        f.write("Time     |  NET   |  QAP   |  TID   | Total\n")
+        f.write("---------+--------+--------+--------+-------\n")
+        for hour in range(24):
+            for second in range(60):
+                time_str = f"{hour:02}:00:{second:02}"
+                lines = filter_logs(data_source, f"{date} {time_str}")
+                net, qap, tid, total = count_transactions(lines)
+                line = f"{time_str} | {net:6} | {qap:6} | {tid:6} | {total:5}\n"
+                f.write(line)
+    print(f"✅ TPS Report saved at {output_file}")
+
+def report_tph(date, data_source):
+    """Transactions per hour."""
+    print(f"\n📊 Generating TPH Report for {date}...")
+    show_loader()
+    tph_data = defaultdict(lambda: [0, 0, 0, 0])  # hour -> [net, qap, tid, total]
+    max_total = 0
+
+    for hour in range(24):
+        lines = filter_logs(data_source, f"{date} {hour:02}:")
+        net, qap, tid, total = count_transactions(lines)
+        tph_data[hour] = [net, qap, tid, total]
+        max_total = max(max_total, total)
+
+    print("\nHour  |  NET   |  QAP   |  TID   | Total")
+    print("------+--------+--------+--------+-------")
+    for hour in range(24):
+        net, qap, tid, total = tph_data[hour]
+        print(f"{hour:02}:00 | {net:6} | {qap:6} | {tid:6} | {total:5}")
+
+    print("\n📊 Visual Graph")
+    print("------------------------------------------")
+    for hour in range(24):
+        net, qap, tid, total = tph_data[hour]
+        net_len = int((net / max_total) * 50) if max_total else 0
+        qap_len = int((qap / max_total) * 50) if max_total else 0
+        tid_len = int((tid / max_total) * 50) if max_total else 0
+        print(f"{hour:02}:00 | {'#'*net_len}{'='*qap_len}{'+'*tid_len}")
+    print("\n✅ TPH Report complete.")
+
+def report_tpd(date, data_source):
+    """Transactions per day."""
+    print(f"\n📊 Generating TPD Report for {date}...")
+    show_loader()
+    lines = filter_logs(data_source, date)
+    print(f"Total Transactions on {date}: {len(lines)}")
+    print("✅ TPD Report complete.")
+
+def report_tpm(date, data_source):
+    """Transactions per minute."""
+    output_file = os.path.join(LOG_DIR, f"tpm_report_{date.replace(' ', '_')}.log")
+    print(f"\n📊 Generating TPM Report for {date}...")
+    show_loader()
+
+    with open(output_file, "w") as f:
+        f.write(f"TPM Report for {date}\n")
+        f.write("Time   | TPM (NET) | TPM (QAP) | TPM (TID) | Total\n")
+        f.write("-------+-----------+-----------+-----------+-------\n")
+        for hour in range(24):
+            for minute in range(60):
+                time_str = f"{hour:02}:{minute:02}"
+                lines = filter_logs(data_source, f"{date} {time_str}")
+                net, qap, tid, total = count_transactions(lines)
+                f.write(f"{time_str} | {net:9} | {qap:9} | {tid:9} | {total:5}\n")
+    print(f"✅ TPM Report saved at {output_file}")
+
+# ------------------------
+# MAIN MENU
+# ------------------------
+
+if __name__ == "__main__":
+    print("------------------------------------------")
+    print("       📊 Report Generation Menu")
+    print("------------------------------------------")
+    print("1. TPS (Transactions Per Second)")
+    print("2. TPH (Transactions Per Hour)")
+    print("3. TPD (Transactions Per Day)")
+    print("4. TPM (Transactions Per Minute)")
+    print("------------------------------------------")
+
+    choice = input("Enter your choice (1/2/3/4): ").strip()
+    date_input = input("Enter the date (ex: Jun 16 or today): ").strip()
+
+    if date_input.lower() == "today":
+        date_str = datetime.datetime.now().strftime("%b %e")
+        print(f"\n📅 Interpreting 'today' as: '{date_str}'")
+        collect_remote_logs()
+        data_source = TODAY_FILE
+    else:
+        date_str = date_input
+        data_source = DATA_SOURCE_ALL
+
+    if choice == "1":
+        report_tps(date_str, data_source)
+    elif choice == "2":
+        report_tph(date_str, data_source)
+    elif choice == "3":
+        report_tpd(date_str, data_source)
+    elif choice == "4":
+        report_tpm(date_str, data_source)
+    else:
+        print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
