@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+# =============================================================================
+#  Log Search & Capture Tool (Python Version)
+#
+#  Description:
+#    A utility for searching and capturing logs from one or multiple servers.
+#    - Option 1: Search logs for a keyword and save results
+#    - Option 2: Capture full logs from one or all servers
+#
+#  Author: Saeem Sayyed Ahmed Kadiri
+#  Version: 1.0.0
+#  License: MIT
+# =============================================================================
+
+import os
+import subprocess
+
+# -----------------------
+# CONFIGURATION
+# -----------------------
+VERSION = "1.0.0"
+SERVERS = ["serverA", "serverB", "serverC", "serverD", "serverE"]
+
+LOG_BASE_DIR = os.path.expanduser("~/logs")
+LOG_SEARCH_DIR = os.path.join(LOG_BASE_DIR, "logsearch1")
+LOG_CAPTURE_DIR = os.path.join(LOG_BASE_DIR, "logcapture1")
+
+os.makedirs(LOG_SEARCH_DIR, exist_ok=True)
+os.makedirs(LOG_CAPTURE_DIR, exist_ok=True)
+
+
+# -----------------------
+# FUNCTIONS
+# -----------------------
+
+def show_header():
+    print("===========================================")
+    print(f"     LOG SEARCH & CAPTURE TOOL v{VERSION}   ")
+    print("===========================================")
+    print("  1. Search logs for a keyword")
+    print("  2. Capture full logs")
+    print("-------------------------------------------")
+
+
+def run_ssh_command(server, command):
+    """Run a command locally or over SSH."""
+    try:
+        if server == "serverA":
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        else:
+            ssh_command = f"ssh -q {server} \"{command}\""
+            result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    except Exception as e:
+        return f"Error fetching logs from {server}: {str(e)}"
+
+
+def search_logs():
+    day = input("Enter the day (e.g., 01): ").strip()
+    month = input("Enter the month (e.g., Jan): ").strip()
+    year = input("Enter the year (e.g., 2025): ").strip()
+    keyword = input("Enter the search keyword: ").strip()
+
+    print(f"Searching logs across all servers for '{keyword}'...")
+    for server in SERVERS:
+        log_path = f"/var/log/app_logs/{server}_app_{day}_{month}_{year}.log"
+        command = f"cat '{log_path}' 2>/dev/null | grep -i '{keyword}'"
+        logs = run_ssh_command(server, command)
+        file_path = os.path.join(LOG_SEARCH_DIR, f"{keyword}_{day}_{month}_{year}_{server}.txt")
+        with open(file_path, "w") as f:
+            f.write(logs + "\n")
+        print(f"✔ Logs saved for {server} -> {file_path}")
+
+
+def capture_logs():
+    day = input("Enter the day (e.g., 01): ").strip()
+    month = input("Enter the month (e.g., Jan): ").strip()
+    year = input("Enter the year (e.g., 2025): ").strip()
+    server_choice = input("Enter the server (type 'all' for all servers): ").strip()
+
+    if server_choice.lower() == "all":
+        print("Capturing logs from all servers...")
+        for server in SERVERS:
+            capture_single_server(server, day, month, year)
+    else:
+        capture_single_server(server_choice, day, month, year)
+
+
+def capture_single_server(server, day, month, year):
+    log_path = f"/var/log/app_logs/{server}_app_{day}_{month}_{year}.log"
+    command = f"cat '{log_path}' 2>/dev/null"
+    logs = run_ssh_command(server, command)
+    file_path = os.path.join(LOG_CAPTURE_DIR, f"{day}_{month}_{year}_{server}.txt")
+    with open(file_path, "w") as f:
+        f.write(logs + "\n")
+    print(f"✔ Logs captured for {server} -> {file_path}")
+
+
+# -----------------------
+# MAIN EXECUTION
+# -----------------------
+if __name__ == "__main__":
+    show_header()
+    choice = input("Select an option (1 for search, 2 for capture): ").strip()
+
+    if choice == "1":
+        search_logs()
+    elif choice == "2":
+        capture_logs()
+    else:
+        print("❌ Invalid choice. Please select 1 or 2.")
