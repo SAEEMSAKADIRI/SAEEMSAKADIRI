@@ -23,7 +23,8 @@
 ## 🚀 Projects  
 
 - **Telemetry Script**
-- Monitors application performance and reports key metrics.
+A lightweight tool to monitor application performance and system health.
+
 | Language | File |
 |-----------|------|
 | 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
