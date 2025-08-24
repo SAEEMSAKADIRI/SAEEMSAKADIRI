@@ -85,7 +85,7 @@
 ## 📫 Connect With Me  
 - **Email:** [saeemkadir@gmail.com](mailto:saeemkadir@gmail.com)  
 - **GitHub:** [github.com/SAEEMSAKADIRI](https://github.com/SAEEMSAKADIRI)  
-- **LinkedIn:** [www.linkedin.com/in/saeem-kadiri-31a9851b2](www.linkedin.com/in/saeem-kadiri-31a9851b2)  
+- **LinkedIn:** [www.linkedin.com/in/saeem-kadiri-31a9851b2](https://www.linkedin.com/in/saeem-kadiri-31a9851b2)
 
 ---
 
