@@ -21,13 +21,13 @@
 ---
 
 ## 🚀 Projects  
-- **Shell Implementation:** [telemetry.sh](telemetry.sh)  
-- **Python Implementation:** [telemetry.py](telemetry.py)
 
-**Features:**
-- Captures start and end times of jobs  
-- Logs key metrics and performance stats  
-- Supports both shell and Python versions  
+- **Telemetry Script**
+- Monitors application performance and reports key metrics.
+| Language | File |
+|-----------|------|
+| 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
+| 🐍 **Python** | [telemetry.py](telemetry.py) |
 
 - **Log Search Script**  
   Analyzes logs and raises alerts for anomalies.  
