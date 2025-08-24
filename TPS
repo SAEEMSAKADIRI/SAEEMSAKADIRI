@@ -1,0 +1,201 @@
+#!/bin/bash
+# =======================================================
+# TPS/TPH/TPD/TPM Report Generator
+# Author: Your Name
+# Version: 1.0
+# Description:
+#   Generates transaction reports per second, minute,
+#   hour, or day by parsing application logs.
+# =======================================================
+
+# ------------------------
+# CONFIGURATION
+# ------------------------
+LOG_DIR="/data/app_logs/tps"
+TODAY_FILE="$LOG_DIR/transaction_today"
+DATA_SOURCE_ALL="$LOG_DIR/messages_all"
+
+REMOTE_SERVERS=(
+  "server1.example.com"
+  "server2.example.com"
+  "server3.example.com"
+  "server4.example.com"
+  "server5.example.com"
+  "server6.example.com"
+  "server7.example.com"
+  "server8.example.com"
+  "server9.example.com"
+)
+
+# ------------------------
+# HELPER FUNCTION
+# ------------------------
+show_loader() {
+  echo -ne "⏳ Processing"
+  for ((i=0; i<5; i++)); do
+    echo -ne "."
+    sleep 0.3
+  done
+  echo -e "\n"
+}
+
+# ------------------------
+# MENU DISPLAY
+# ------------------------
+echo -e "\033[1;36m------------------------------------------"
+echo "       📊 Report Generation Menu"
+echo -e "------------------------------------------\033[0m"
+echo "1. TPS (Transactions Per Second)"
+echo "2. TPH (Transactions Per Hour)"
+echo "3. TPD (Transactions Per Day)"
+echo "4. TPM (Transactions Per Minute)"
+echo "------------------------------------------"
+
+read -p "Enter your choice (1/2/3/4): " choice
+read -p "Enter the date (ex: Jun 16 or today): " date
+
+# ------------------------
+# HANDLE DATE INPUT
+# ------------------------
+if [[ "$date" == "today" ]]; then
+  date=$(date "+%b %e")  # e.g., "Jun  1" or "Jun 19"
+  echo -e "\n📅 Interpreting 'today' as: '$date'"
+
+  mkdir -p "$LOG_DIR"
+  : > "$TODAY_FILE"
+
+  echo "🔍 Collecting logs from remote servers..."
+  for host in "${REMOTE_SERVERS[@]}"; do
+    ssh -q "$host" "cat /var/log/messages" | grep -i backbase | grep -i "$date" >> "$TODAY_FILE"
+  done
+
+  echo "✅ Logs collected. Using $TODAY_FILE for analysis."
+  data_source="$TODAY_FILE"
+else
+  data_source="$DATA_SOURCE_ALL"
+fi
+
+# ------------------------
+# REPORT GENERATION
+# ------------------------
+case $choice in
+  # ------------------------
+  # TPS - Transactions Per Second
+  # ------------------------
+  1)
+    echo -e "\n\033[1;36mYou selected TPS (Transactions Per Second)\033[0m"
+    show_loader
+
+    output_file="$LOG_DIR/tps_report_$(echo $date | tr ' ' '_').log"
+    echo "Time     |  NET   |  QAP   |  TID   | Total" | tee "$output_file"
+    echo "---------+--------+--------+--------+-------" | tee -a "$output_file"
+
+    for hour in $(seq -w 0 23); do
+      for second in $(seq -w 0 59); do
+        time_str="${hour}:00:${second}"
+        base_pattern="$date $time_str"
+        net=$(grep -i "$base_pattern" "$data_source" | grep -i net | wc -l)
+        qap=$(grep -i "$base_pattern" "$data_source" | grep -i qap | wc -l)
+        tid=$(grep -i "$base_pattern" "$data_source" | grep -i tid | wc -l)
+        total=$((net + qap + tid))
+        printf "%s | \033[0;32m%6d\033[0m | \033[0;34m%6d\033[0m | \033[0;35m%6d\033[0m | %5d\n" \
+          "$time_str" "$net" "$qap" "$tid" "$total" | tee -a "$output_file"
+      done
+    done
+
+    echo -e "\033[1;32m✅ TPS Report saved at $output_file\033[0m"
+    ;;
+
+  # ------------------------
+  # TPH - Transactions Per Hour
+  # ------------------------
+  2)
+    echo -e "\n\033[1;36mYou selected TPH (Transactions Per Hour)\033[0m"
+    show_loader
+
+    declare -A tph_net tph_qap tph_tid
+    maxTotal=0
+
+    echo -e "\n\033[1;33mTime  |  NET   |  QAP   |  TID   | Total\033[0m"
+    echo "------+--------+--------+--------+-------"
+
+    for hour in $(seq -w 0 23); do
+      time_str="${hour}:00"
+      base_pattern="$date $hour:"
+      net=$(grep -i "$base_pattern" "$data_source" | grep -i net | wc -l)
+      qap=$(grep -i "$base_pattern" "$data_source" | grep -i qap | wc -l)
+      tid=$(grep -i "$base_pattern" "$data_source" | grep -i tid | wc -l)
+      total=$((net + qap + tid))
+      tph_net[$hour]=$net
+      tph_qap[$hour]=$qap
+      tph_tid[$hour]=$tid
+      (( total > maxTotal )) && maxTotal=$total
+
+      printf "%s | \033[0;32m%6d\033[0m | \033[0;34m%6d\033[0m | \033[0;35m%6d\033[0m | %5d\n" \
+        "$time_str" "$net" "$qap" "$tid" "$total"
+    done
+
+    echo -e "\n📊 \033[1;36mVisual TPH Graph (Stacked Bars)\033[0m"
+    echo "------------------------------------------"
+    for hour in $(seq -w 0 23); do
+      net=${tph_net[$hour]}
+      qap=${tph_qap[$hour]}
+      tid=${tph_tid[$hour]}
+      total=$((net + qap + tid))
+      net_len=$((net * 50 / (maxTotal > 0 ? maxTotal : 1)))
+      qap_len=$((qap * 50 / (maxTotal > 0 ? maxTotal : 1)))
+      tid_len=$((tid * 50 / (maxTotal > 0 ? maxTotal : 1)))
+      printf "%s | \033[0;32m%${net_len}s\033[0m\033[0;34m%${qap_len}s\033[0m\033[0;35m%${tid_len}s\033[0m\n" \
+        "$hour:00" "$(printf '#%.0s' $(seq 1 $net_len))" "$(printf '=%.0s' $(seq 1 $qap_len))" "$(printf '+%.0s' $(seq 1 $tid_len))"
+    done
+
+    echo -e "\033[1;32m✅ TPH Report complete.\033[0m"
+    ;;
+
+  # ------------------------
+  # TPD - Transactions Per Day
+  # ------------------------
+  3)
+    echo -e "\n\033[1;36mYou selected TPD (Transactions Per Day)\033[0m"
+    show_loader
+
+    total=$(grep -ic "$date" "$data_source")
+    echo -e "\n📊 Total Transactions on $date: \033[1;32m$total\033[0m"
+    echo -e "\033[1;32m✅ TPD Report complete.\033[0m"
+    ;;
+
+  # ------------------------
+  # TPM - Transactions Per Minute
+  # ------------------------
+  4)
+    echo -e "\n\033[1;36mYou selected TPM (Transactions Per Minute)\033[0m"
+    show_loader
+
+    output_file="$LOG_DIR/tpm_report_$(echo $date | tr ' ' '_').log"
+    echo "TPM Report for $date" > "$output_file"
+    echo "Time   | TPM (NET) | TPM (QAP) | TPM (TID) | Total" | tee -a "$output_file"
+    echo "-------+-----------+-----------+-----------+-------" | tee -a "$output_file"
+
+    for hour in $(seq -w 0 23); do
+      for minute in $(seq -w 0 59); do
+        time_str="${hour}:${minute}"
+        base_pattern="$date $time_str"
+        net=$(grep -i "$base_pattern" "$data_source" | grep -i net | wc -l)
+        qap=$(grep -i "$base_pattern" "$data_source" | grep -i qap | wc -l)
+        tid=$(grep -i "$base_pattern" "$data_source" | grep -i tid | wc -l)
+        total=$((net + qap + tid))
+        printf "%s | \033[0;32m%9d\033[0m | \033[0;34m%9d\033[0m | \033[0;35m%9d\033[0m | %5d\n" \
+          "$time_str" "$net" "$qap" "$tid" "$total" | tee -a "$output_file"
+      done
+    done
+
+    echo -e "\033[1;32m✅ TPM Report saved at $output_file\033[0m"
+    ;;
+
+  # ------------------------
+  # Invalid Choice
+  # ------------------------
+  *)
+    echo -e "\033[1;31m❌ Invalid choice. Please enter 1, 2, 3, or 4.\033[0m"
+    ;;
+esac
