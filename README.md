@@ -28,7 +28,7 @@ A lightweight tool to monitor application performance and system health.
     | Language | File |
     |-----------|------|
     | 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
-    | 🐍 **Python** | [telemetry.py](telemetry.py) |
+    | 🐍 **Python** | [telemetry.py](Telemetry_Python) |
 
 - **Log Search Script**  
   Analyzes logs and raises alerts for anomalies.  
