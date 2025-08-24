@@ -23,7 +23,7 @@
 ## 🚀 Projects  
 - **Telemetry Script**  
   Monitors application performance and reports key metrics.  
-  [View Code](telemetry.sh)
+  [Shell Code](telemetry.sh)  [Python Code](telemetry.sh)
 
 - **Log Search Script**  
   Analyzes logs and raises alerts for anomalies.  
