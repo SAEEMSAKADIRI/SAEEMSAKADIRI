@@ -21,13 +21,8 @@
 ---
 
 ## 🚀 Projects  
-### 📡 Telemetry Script  
-A lightweight tool to monitor application performance and system health.
-
-| Language | File |
-|-----------|------|
-| 🐚 **Shell** | [telemetry.sh](telemetry.sh) |
-| 🐍 **Python** | [telemetry.py](telemetry.py) |
+- **Shell Implementation:** [telemetry.sh](telemetry.sh)  
+- **Python Implementation:** [telemetry.py](telemetry.py)
 
 **Features:**
 - Captures start and end times of jobs  
