@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""
+=====================================================
+Server Health Check Script
+Author: Saeem Sayyed Ahmed Kadiri
+Version: 1.0
+Description: Checks local and remote server health
+=====================================================
+"""
+
+import os
+import socket
+import subprocess
+
+# -------------------------------
+# CONFIGURATION
+# -------------------------------
+PORTS_TO_CHECK = [9003, 9004, 9005, 443, 9010, 9011]
+REMOTE_SERVERS = [
+    "server1.domain.com",
+    "server2.domain.com",
+    "server3.domain.com",
+    "server4.domain.com",
+    "server5.domain.com",
+    "server6.domain.com",
+    "server7.domain.com",
+    "server8.domain.com",
+]
+
+# -------------------------------
+# COLOR CONSTANTS
+# -------------------------------
+GREEN = "\033[1;32m"
+RESET = "\033[0m"
+
+
+def run_command(command):
+    """Run a shell command and return output as string."""
+    try:
+        result = subprocess.run(
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        return result.stdout.strip()
+    except Exception as e:
+        return f"Error running command '{command}': {e}"
+
+
+def get_host_info():
+    """Fetch hostname and IP addresses."""
+    hostname = socket.gethostname()
+    ip_output = run_command("hostname -I")
+    print(f"\n\n{GREEN}Host: {hostname} | IP: {ip_output}{RESET}\n")
+
+
+def check_local_processes():
+    """Check for specific processes running locally."""
+    print("Checking local processes...\n")
+    sn_processes = run_command("ps -eaf | grep sn --color=auto")
+    print(sn_processes if sn_processes else "No 'sn' processes found.")
+    print()
+    odbc_processes = run_command("ps -eaf | grep odbc --color=auto")
+    print(odbc_processes if odbc_processes else "No 'odbc' processes found.")
+    print()
+
+
+def check_ports():
+    """Check listening status for defined ports."""
+    print("Checking listening ports...\n")
+    netstat_output = run_command("netstat -ant | grep -i listen")
+
+    for port in PORTS_TO_CHECK:
+        if f":{port} " in netstat_output:
+            print(f"Port {port}: LISTENING")
+        else:
+            print(f"Port {port}: NOT LISTENING")
+    print()
+
+
+def check_remote_servers():
+    """Run remote health check script on each server."""
+    print("*" * 120)
+    print("Checking remote servers...\n")
+    for server in REMOTE_SERVERS:
+        print(f"------ {server} ------")
+        try:
+            result = run_command(f"ssh -q {server} 'bash -s' < check 2>/dev/null")
+            if result:
+                print(result)
+            else:
+                print(f"Failed to connect to {server} or no output.")
+        except Exception as e:
+            print(f"Error connecting to {server}: {e}")
+        print()
+
+
+def main():
+    """Main function to run all checks."""
+    get_host_info()
+    check_local_processes()
+    check_ports()
+    check_remote_servers()
+    print("Health check complete!")
+
+
+if __name__ == "__main__":
+    main()
