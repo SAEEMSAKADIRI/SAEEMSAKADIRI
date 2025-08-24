@@ -1,0 +1,104 @@
+#!/bin/bash
+# =============================================================================
+#  Log Search & Capture Tool
+#
+#  Description:
+#    A simple utility for searching and capturing logs from one or multiple servers.
+#    - Option 1: Search logs for a keyword and save results
+#    - Option 2: Capture full logs from one or all servers
+#
+#  Author: Saeem Sayyed Ahmed Kadiri
+#  Version: 1.0.0
+#  License: MIT
+# =============================================================================
+
+# -----------------------
+# CONFIGURATION
+# -----------------------
+VERSION="1.0.0"
+
+# List of servers (update these names or host aliases as needed)
+servers=("serverA" "serverB" "serverC" "serverD" "serverE")
+
+# Base directories for storing results
+log_base_dir="$HOME/logs"
+log_search_dir="$log_base_dir/logsearch1"
+log_capture_dir="$log_base_dir/logcapture1"
+
+# Create directories if they don't exist
+mkdir -p "$log_search_dir" "$log_capture_dir"
+
+# -----------------------
+# FUNCTIONS
+# -----------------------
+
+show_header() {
+  echo "==========================================="
+  echo "     LOG SEARCH & CAPTURE TOOL v$VERSION   "
+  echo "==========================================="
+  echo "  1. Search logs for a keyword"
+  echo "  2. Capture full logs"
+  echo "-------------------------------------------"
+}
+
+search_logs() {
+  read -p "Enter the day (e.g., 01): " day
+  read -p "Enter the month (e.g., Jan): " month
+  read -p "Enter the year (e.g., 2025): " year
+  read -p "Enter the search keyword: " keyword
+
+  echo "Searching logs across all servers for '$keyword'..."
+  for server in "${servers[@]}"; do
+    log_path="/var/log/app_logs/${server}_app_${day}_${month}_${year}.log"
+    if [[ "$server" == "serverA" ]]; then
+      log=$(cat "$log_path" 2>/dev/null | grep -i "$keyword")
+    else
+      log=$(ssh -q "$server" "cat '$log_path'" 2>/dev/null | grep -i "$keyword")
+    fi
+    echo "$log" > "$log_search_dir/${keyword}_${day}_${month}_${year}_${server}.txt"
+    echo "✔ Logs saved for $server -> ${keyword}_${day}_${month}_${year}_${server}.txt"
+  done
+}
+
+capture_logs() {
+  read -p "Enter the day (e.g., 01): " day
+  read -p "Enter the month (e.g., Jan): " month
+  read -p "Enter the year (e.g., 2025): " year
+  read -p "Enter the server (type 'all' for all servers): " server_choice
+
+  if [[ "$server_choice" == "all" ]]; then
+    echo "Capturing logs from all servers..."
+    for server in "${servers[@]}"; do
+      capture_single_server "$server" "$day" "$month" "$year"
+    done
+  else
+    capture_single_server "$server_choice" "$day" "$month" "$year"
+  fi
+}
+
+capture_single_server() {
+  local server=$1
+  local day=$2
+  local month=$3
+  local year=$4
+  log_path="/var/log/app_logs/${server}_app_${day}_${month}_${year}.log"
+  if [[ "$server" == "serverA" ]]; then
+    log=$(cat "$log_path" 2>/dev/null)
+  else
+    log=$(ssh -q "$server" "cat '$log_path'" 2>/dev/null)
+  fi
+  echo "$log" > "$log_capture_dir/${day}_${month}_${year}_${server}.txt"
+  echo "✔ Logs captured for $server -> ${day}_${month}_${year}_${server}.txt"
+}
+
+# -----------------------
+# MAIN EXECUTION
+# -----------------------
+show_header
+read -p "Select an option (1 for search, 2 for capture): " choice
+
+case $choice in
+  1) search_logs ;;
+  2) capture_logs ;;
+  *) echo "❌ Invalid choice. Please select 1 or 2." ;;
+esac
