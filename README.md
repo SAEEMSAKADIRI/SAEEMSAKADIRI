@@ -25,9 +25,9 @@
   Monitors application performance and reports key metrics.  
   [View Code](telemetry.sh)
 
-- **Log Monitoring Script**  
+- **Log Search Script**  
   Analyzes logs and raises alerts for anomalies.  
-  [View Code](#)
+  [View Code](LOG_SEARCH)
 
 - **TPS Script**  
   Tracks transactions per second and overall system throughput.  
