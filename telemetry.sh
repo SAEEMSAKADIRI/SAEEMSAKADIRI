@@ -1,71 +1,99 @@
 #!/bin/bash
-# =========================================
-# Telemetry Script (Open Source Safe Version)
-# Author: Saeem S.A. Kadiri
+# ===============================================
+# Telemetry Monitoring Script
+# ===============================================
+# Author: Your Name
 # Description:
-#   Collects transaction performance stats (TPS) and error data
-#   from system logs for DevOps monitoring purposes.
-# =========================================
+#   This script fetches TPS, error counts, and latency 
+#   metrics from logs for telemetry monitoring.
+# ===============================================
+
+# -------------------------
+# CONFIGURATION (EDIT THESE)
+# -------------------------
+
+# Log paths
+SYSLOG_PATH="/var/log/messages"
+APP_LOG_DIR="/data/app_logs/"
+
+# Remote node hostnames/IPs (replace with your own)
+NODES=(
+  "node1.example.com"
+  "node2.example.com"
+  "node3.example.com"
+  "node4.example.com"
+  "node5.example.com"
+  "node6.example.com"
+  "node7.example.com"
+  "node8.example.com"
+  "node9.example.com"
+)
+
+REMOTE_SCRIPT="tele3.sh"  # Script to run remotely on nodes
+
+# -------------------------
+# SCRIPT START
+# -------------------------
 
 echo ""
-Starttime="$(date -d '5 minutes ago' "+%H:%M")"
-Endtime="$(date +"%H:%M")"
-current_date="$(date "+%b %e")"
+START_TIME="$(date -d '5 minutes ago' '+%H:%M')"
+END_TIME="$(date '+%H:%M')"
+CURRENT_DATE="$(date '+%b %e')"
+TP_DATE="$(date --date='5 minutes ago' | cut -c 5-19)"
+DATE_SHORT="$(date | cut -c 5-10)"
+CURRENT_DATETIME="$(date)"
 
-echo "From $Starttime to $Endtime"
+echo ""
+echo "From $START_TIME to $END_TIME"
+echo "TPS Fetched for: $TP_DATE"
 echo ""
 
-tpdate="$(date --date='5 minutes ago' | cut -c 5-19)"
-current_short_date="$(date | cut -c 5-10)"
-dat="$(date)"
-echo "TPS fetched for: $tpdate"
-echo ""
+# -------------------------
+# Local TPS Calculation
+# -------------------------
+TPS_COUNT="$(grep -i "$CURRENT_DATE" "$SYSLOG_PATH" | grep -i "backbase" | grep -i "$TP_DATE" | wc -l)"
 
-# ================================
-# TPS calculation (local node)
-# ================================
-tps_count=$(grep -i "$current_date" /var/log/messages | grep -i "backbase" | grep -i "$tpdate" | wc -l)
+# Get latest app log
+LATEST_LOG="$(ls -lrth "$APP_LOG_DIR" | tail -1 | awk '{print $9}')"
 
-# Display TPS
-echo "Local Node TPS: $tps_count"
-echo ""
+# Error counters
+SYS_ERROR=$(grep -ci "system error" "$APP_LOG_DIR/$LATEST_LOG")
+DB_ERROR=$(grep -ci "database error\|database" "$APP_LOG_DIR/$LATEST_LOG")
+ORA_ERROR=$(grep -ci "ora-" "$APP_LOG_DIR/$LATEST_LOG")
+NOPROC_ERROR=$(grep -ci "noproc" "$APP_LOG_DIR/$LATEST_LOG")
+CONN_FAIL=$(grep -ci "failed to connect" "$APP_LOG_DIR/$LATEST_LOG")
+NODE_DOWN=$(grep -ci "nodedown" "$APP_LOG_DIR/$LATEST_LOG")
+HIGH_DB=$(grep -ci "db connection error\|high_db_time" "$APP_LOG_DIR/$LATEST_LOG")
+CASE_CLAUSE=$(grep -ci "case_clause" "$APP_LOG_DIR/$LATEST_LOG")
 
-# ================================
-# Error counts
-# ================================
-latest_log=$(ls -1t /data/logs/ | head -n 1)
-
-sys_err=$(grep -i "system error" /data/logs/$latest_log | wc -l)
-db_err=$(grep -Ei "database error|database" /data/logs/$latest_log | wc -l)
-ora_err=$(grep -i "ora-" /data/logs/$latest_log | wc -l)
-noproc_err=$(grep -i "noproc" /data/logs/$latest_log | wc -l)
-ftc_err=$(grep -i "failed to connect" /data/logs/$latest_log | wc -l)
-nodedown_err=$(grep -i "nodedown" /data/logs/$latest_log | wc -l)
-highdb_err=$(grep -Ei "db connection error|high_db_time" /data/logs/$latest_log | wc -l)
-case_clause_err=$(grep -i "case_clause" /data/logs/$latest_log | wc -l)
-
+# -------------------------
+# Display Summary
+# -------------------------
+echo "------------------------------------------------"
 echo "Error Summary:"
-echo "  System Errors       : $sys_err"
-echo "  DB Errors           : $db_err"
-echo "  Oracle Errors       : $ora_err"
-echo "  No Process Errors   : $noproc_err"
-echo "  Failed Connections  : $ftc_err"
-echo "  Node Down Events    : $nodedown_err"
-echo "  High DB Time Errors : $highdb_err"
-echo "  Case Clause Errors  : $case_clause_err"
+echo "System Errors   : $SYS_ERROR"
+echo "DB Errors       : $DB_ERROR"
+echo "ORA Errors      : $ORA_ERROR"
+echo "No Proc         : $NOPROC_ERROR"
+echo "Failed Connects : $CONN_FAIL"
+echo "Node Down       : $NODE_DOWN"
+echo "High DB Time    : $HIGH_DB"
+echo "Case Clause     : $CASE_CLAUSE"
+echo "TPS (Local)     : $TPS_COUNT"
+echo "------------------------------------------------"
+
+# -------------------------
+# Remote Node Status Check
+# -------------------------
 echo ""
+echo "Fetching telemetry from remote nodes..."
+echo "----------------------------------------"
 
-# ================================
-# Placeholder: Multi-node stats
-# ================================
-# To fetch from other nodes, configure their IPs in a secure way.
-# Example:
-#   NODES=("node1_ip" "node2_ip")
-#   for NODE in "${NODES[@]}"; do
-#       ssh "$NODE" 'bash -s' < telemetry_remote.sh
-#   done
-echo "Multi-node telemetry check is disabled in this open-source version."
+for NODE in "${NODES[@]}"; do
+  echo ">>> Connecting to $NODE"
+  ssh -q "$NODE" "bash -s" < "$REMOTE_SCRIPT"
+  echo "----------------------------------------"
+done
+
 echo ""
-
-echo "Telemetry check completed!"
-
+echo "Telemetry check complete."
