@@ -44,7 +44,7 @@ A lightweight tool to monitor application performance and system health.
     | Language | File |
     |-----------|------|
     | 🐚 **Shell** | [TPS.sh](TPS) |
-    | 🐍 **Python** | [TPS.py](Log_Search_Py) |
+    | 🐍 **Python** | [TPS.py](TPS_Py) |
   
 
 - **Health Check script**  
