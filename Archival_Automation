@@ -1,0 +1,209 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+# Script Name : sync_tables.sh
+# Description : Automates Oracle archival data import, validation, and sync via DB-LINK
+# Author      : Saeem Sayyed Ahmed Kadiri
+# Date        : 25-Aug-2025
+# -----------------------------------------------------------------------------
+# Requirements:
+#   - Oracle Client installed (sqlplus available in PATH)
+#   - Environment variables updated as per your Oracle installation
+#   - Proper .secure_key and enc_pass.config in your chosen config directory
+# -----------------------------------------------------------------------------
+
+# --- Oracle Environment Setup (update as per your installation) ---
+export ORACLE_HOME=/your/oracle/home/path
+export PATH=$ORACLE_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib
+export SQLPATH=$ORACLE_HOME/sqlplus/admin
+export ORACLE_SID=YOUR_DB_SID
+
+# --- Date Variables ---
+date_today="$(date +'%d%m%y')"
+date_now="$(date)"
+date_7="$(date --date="7 days ago" +"%d%m%y")"
+
+# --- Paths (update as needed) ---
+CONFIG_DIR=/path/to/config
+LOG_DIR=/path/to/logs
+OUTPUT_DIR=/path/to/output
+
+mkdir -p "$LOG_DIR" "$OUTPUT_DIR"
+
+# --- Log & Output Files ---
+log_file="$LOG_DIR/logs_$date_today.txt"
+spool_file_app_1="$OUTPUT_DIR/table_list_app_1.txt"
+spool_file_app_2="$OUTPUT_DIR/table_list_app_2.txt"
+spool_file_app_3="$OUTPUT_DIR/table_list_app_3.txt"
+spool_file_appli="$OUTPUT_DIR/row_count_application.txt"
+spool_file_arch="$OUTPUT_DIR/row_count_archival.txt"
+table_list="$OUTPUT_DIR/table_list.txt"
+mis_file="$OUTPUT_DIR/mismatch.txt"
+
+# --- User Check (update if you want restriction to a specific OS user) ---
+CURRENT_USER=$(whoami)
+if [ "$CURRENT_USER" != "oracle" ]; then
+    echo "$date_now : Error: This script must be run as 'oracle'." >> $log_file
+    exit 1
+fi
+echo "$date_now : Script is running as $CURRENT_USER..."  >> $log_file
+
+# --- Decrypt DB Password ---
+key="$(cat $CONFIG_DIR/.secure_key)"
+if [ -f $CONFIG_DIR/enc_pass.config ]; then
+    decrypted_password=$(openssl enc -aes-256-cbc -d -a -pbkdf2 -salt \
+        -pass pass:"$key" -in $CONFIG_DIR/enc_pass.config 2>/dev/null)
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to decrypt the password. Check enc_pass.config/key." | tee -a $log_file
+        exit 1
+    fi
+else
+    echo "Encrypted password file 'enc_pass.config' not found!" | tee -a $log_file
+    exit 1
+fi
+
+DB_USER="YOUR_SCHEMA"
+DB_PASS="$decrypted_password"
+DB_LINK="ARCH2PROD"   # update with your DB link name
+
+# -----------------------------------------------------------------------------
+# Fetch latest imported table dates for APP_1, APP_2, APP_3
+# -----------------------------------------------------------------------------
+for app in 1 2 3; do
+  eval latest_end_date_app_${app}=$($ORACLE_HOME/bin/sqlplus -s $DB_USER/$DB_PASS <<EOF
+SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 100 TRIMSPOOL ON ECHO OFF
+SELECT REGEXP_SUBSTR(table_name, '\d{6}', 1, 2)
+FROM all_tables
+WHERE table_name LIKE 'APP_${app}_TLOG_%' AND OWNER LIKE UPPER('$DB_USER')
+  AND REGEXP_LIKE(table_name, '\d{6}.*\d{6}')
+ORDER BY TO_DATE(REGEXP_SUBSTR(table_name, '\d{6}', 1, 2), 'DDMMYY') DESC
+FETCH FIRST 1 ROW ONLY;
+EXIT;
+EOF
+)
+  eval latest_end_date_app_${app}=\$(echo "\$latest_end_date_app_${app}" | xargs)
+  echo "Latest End Date for Application $app : $(eval echo \$latest_end_date_app_${app})"
+  echo "$date_now : last imported table date for Application $app: $(eval echo \$latest_end_date_app_${app})" >> $log_file
+done
+
+# -----------------------------------------------------------------------------
+# Fetch tables from Archival for APP_1, APP_2, APP_3
+# -----------------------------------------------------------------------------
+for app in 1 2 3; do
+  spool_var="spool_file_app_${app}"
+  latest_var="latest_end_date_app_${app}"
+  $ORACLE_HOME/bin/sqlplus -s $DB_USER/$DB_PASS <<EOF
+SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 100 TRIMSPOOL ON ECHO OFF
+SPOOL ${!spool_var}
+SELECT table_name
+FROM all_tables@$DB_LINK
+WHERE table_name LIKE 'APP_${app}_TLOG_%' AND OWNER LIKE UPPER('$DB_USER')
+  AND REGEXP_LIKE(REGEXP_SUBSTR(table_name, '\d{6}', 1, 1), '^\d{6}$')
+  AND REGEXP_LIKE(REGEXP_SUBSTR(table_name, '\d{6}', 1, 2), '^\d{6}$')
+  AND TO_DATE(REGEXP_SUBSTR(table_name, '\d{6}', 1, 1), 'DDMMYY') >= TO_DATE('${!latest_var}', 'DDMMYY')
+  AND TO_DATE(REGEXP_SUBSTR(table_name, '\d{6}', 1, 2), 'DDMMYY') <= TO_DATE('$date_7', 'DDMMYY')
+ORDER BY table_name;
+SPOOL OFF
+EXIT;
+EOF
+  echo "$date_now : Tables list for Application $app written to ${!spool_var}" >> $log_file
+done
+
+cat "$spool_file_app_1" "$spool_file_app_2" "$spool_file_app_3" > "$table_list"
+echo "$date_now : All tables combined for importing" >> $log_file
+
+# -----------------------------------------------------------------------------
+# Import data into Archival server
+# -----------------------------------------------------------------------------
+$ORACLE_HOME/bin/sqlplus -s "$DB_USER/$DB_PASS" <<EOF
+$(while IFS= read -r table_name; do
+    echo "CREATE TABLE ${DB_USER}.${table_name} AS SELECT * FROM ${DB_USER}.${table_name}@$DB_LINK WHERE 1=0;"
+    echo "INSERT INTO ${DB_USER}.${table_name} SELECT * FROM ${DB_USER}.${table_name}@$DB_LINK;"
+    echo "COMMIT;"
+done < "$table_list")
+EXIT;
+EOF
+echo "$date_now : All tables processed into Archival" >> $log_file
+
+# -----------------------------------------------------------------------------
+# Sync log_archive table
+# -----------------------------------------------------------------------------
+$ORACLE_HOME/bin/sqlplus -s $DB_USER/$DB_PASS <<EOF
+DROP TABLE log_archive;
+CREATE TABLE ${DB_USER}.log_archive AS SELECT * FROM ${DB_USER}.log_archive@$DB_LINK WHERE 1=0;
+INSERT INTO ${DB_USER}.log_archive SELECT * FROM ${DB_USER}.log_archive@$DB_LINK;
+COMMIT;
+-- Keep last 9 partitions for each app
+FOR app IN ('app_1','app_2','app_3') LOOP
+  DELETE FROM log_archive WHERE rowid IN (
+    SELECT rowid FROM (
+      SELECT rowid, ROW_NUMBER() OVER (ORDER BY shardcount) AS rn
+      FROM log_archive WHERE shardname LIKE app||'%'
+    ) subquery WHERE rn > (SELECT COUNT(*) - 9 FROM log_archive WHERE shardname LIKE app||'%')
+  );
+END LOOP;
+COMMIT;
+EXIT;
+EOF
+
+# -----------------------------------------------------------------------------
+# Verify row counts
+# -----------------------------------------------------------------------------
+$ORACLE_HOME/bin/sqlplus -s "$DB_USER/$DB_PASS" <<EOF
+SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 200 TRIMSPOOL ON ECHO OFF
+SPOOL $spool_file_arch
+$(while IFS= read -r table_name; do
+    echo "SELECT '${table_name}' || ': ' || COUNT(*) FROM ${DB_USER}.${table_name};"
+done < "$table_list")
+SPOOL OFF
+EXIT;
+EOF
+
+$ORACLE_HOME/bin/sqlplus -s "$DB_USER/$DB_PASS" <<EOF
+SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 200 TRIMSPOOL ON ECHO OFF
+SPOOL $spool_file_appli
+$(while IFS= read -r table_name; do
+    echo "SELECT '${table_name}' || ': ' || COUNT(*) FROM ${DB_USER}.${table_name}@$DB_LINK;"
+done < "$table_list")
+SPOOL OFF
+EXIT;
+EOF
+
+# -----------------------------------------------------------------------------
+# Compare row counts & fix mismatches
+# -----------------------------------------------------------------------------
+awk '
+  NR==FNR {app[$1]=$2; next}
+  {
+    arch[$1]=$2;
+    if (arch[$1] != app[$1]) {
+      print $1 > "'"$mis_file"'";
+    }
+  }
+' "$spool_file_appli" "$spool_file_arch"
+
+sed -i 's/:$//' $mis_file
+
+if [ -f "$mis_file" ] && [ -s "$mis_file" ]; then
+    echo "Mismatch found. Reimporting mismatched tables..." >> $log_file
+    $ORACLE_HOME/bin/sqlplus -s "$DB_USER/$DB_PASS" <<EOF
+    $(while IFS= read -r table_name; do
+        echo "DROP TABLE ${DB_USER}.${table_name};"
+        echo "CREATE TABLE ${DB_USER}.${table_name} AS SELECT * FROM ${DB_USER}.${table_name}@$DB_LINK WHERE 1=0;"
+        echo "INSERT INTO ${DB_USER}.${table_name} SELECT * FROM ${DB_USER}.${table_name}@$DB_LINK;"
+        echo "COMMIT;"
+    done < "$mis_file")
+    EXIT;
+EOF
+else
+    echo "$date_now : No mismatches found. All row counts match." >> $log_file
+fi
+
+# -----------------------------------------------------------------------------
+# Archive today's lists
+# -----------------------------------------------------------------------------
+cp "$table_list" "$OUTPUT_DIR/table_import_$date_today.txt"
+cp "$mis_file" "$OUTPUT_DIR/mismatch_$date_today.txt"
+
+echo "$date_now : Script execution completed successfully." >> $log_file
