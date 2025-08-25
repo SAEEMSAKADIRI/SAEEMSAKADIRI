@@ -78,10 +78,6 @@
 
 ---
 
-![GitHub Streak](https://streak-stats.demolab.com/?user=SAEEMSAKADIRI&theme=radical)
-
----
-
 ## 📫 Connect With Me  
 - **Email:** [saeemkadir@gmail.com](mailto:saeemkadir@gmail.com)  
 - **GitHub:** [github.com/SAEEMSAKADIRI](https://github.com/SAEEMSAKADIRI)  
