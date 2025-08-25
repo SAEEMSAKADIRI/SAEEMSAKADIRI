@@ -33,6 +33,15 @@
 
 ## 🚀 **Projects Portfolio**
 
+### 📦 **Archival Script**
+> Automates **database archival & purging**, moving old records from **production** to **archive DB** safely using DB-LINK.  
+
+| Language | File |
+|-----------|------|
+| 🐚 **Shell**  | [Archival.sh](Archival_Automation) |
+
+---
+
 ### 📡 **Telemetry Script**
 > A **lightweight** tool to monitor **application performance** and **system health** in real-time.
 
